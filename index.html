@@ -4,21 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vòng Quay May Mắn Nhận Quà</title>
-    <!-- Thư viện hiệu ứng pháo hoa -->
+    <!-- Thư viện hiệu ứng pháo hoa ăn mừng -->
     <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
         h1 { color: #d63031; margin-bottom: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); text-align: center; }
         
+        /* Giao diện vòng quay */
         .wheel-container { position: relative; width: 360px; height: 360px; margin-bottom: 20px; }
         #wheel { width: 100%; height: 100%; border-radius: 50%; border: 8px solid #fdcb6e; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: transform 4s cubic-bezier(0.1, 0.8, 0.2, 1); background: #fff; }
         
+        /* Mũi tên định vị kết quả */
         .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 30px solid #d63031; z-index: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
         
+        /* Nút quay ở tâm */
         .spin-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px; background: #d63031; border-radius: 50%; border: 4px solid #fff; color: #fff; font-weight: bold; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 5; user-select: none; }
         .spin-btn:active { transform: translate(-50%, -50%) scale(0.95); }
 
+        /* Popup Form thông tin */
         .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .popup-box { background: #fff; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transform: scale(0.8); transition: transform 0.3s ease; }
         .popup-overlay.show { opacity: 1; pointer-events: auto; }
@@ -46,14 +50,14 @@
         <div class="spin-btn" id="spinBtn">QUAY</div>
     </div>
 
-    <!-- POPUP FORM THU THẬP THÔNG TIN -->
+    <!-- POPUP FORM HIỂN THỊ TRÊN MÀN HÌNH -->
     <div class="popup-overlay" id="popup">
         <div class="popup-box">
             <h2>🎉 Chúc Mừng Bạn!</h2>
             <p style="margin-bottom: 5px;">Bạn đã quay trúng phần quà:</p>
             <div class="reward-announcement" id="rewardText">Đang tải...</div>
             
-            <form id="infoForm">
+            <form id="displayForm">
                 <div class="form-group">
                     <label>Họ và Tên:</label>
                     <input type="text" id="fullname" placeholder="Nhập họ tên của bạn" required>
@@ -71,8 +75,21 @@
         </div>
     </div>
 
+    <!-- 🛡️ CƠ CHẾ IFRAME ẨN: Vượt lỗi bảo mật CORS từ ổ đĩa local -->
+    <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="if(submitted) { handleSuccess(); }"></iframe>
+    
+    <!-- 🔗 ĐÃ ĐỔI ĐUÔI LINK THÀNH /formResponse VÀ GHÉP ĐÚNG MÃ ENTRY THEO YÊU CẦU -->
+    <form id="realGoogleForm" action="https://google.com" method="POST" target="hidden_iframe" style="display:none;">
+        <input type="hidden" name="entry.2005620554" id="g_reward">  <!-- Câu hỏi: Phần quà -->
+        <input type="hidden" name="entry.1045781291" id="g_name">    <!-- Câu hỏi: Họ tên -->
+        <input type="hidden" name="entry.1065046570" id="g_phone">   <!-- Câu hỏi: Số điện thoại -->
+        <input type="hidden" name="entry.1166974658" id="g_email">   <!-- Câu hỏi: Email -->
+    </form>
+
     <script>
-        // Danh sách quà tặng mặc định (Bạn có thể sửa chữ trong các dấu ngoặc kép này)
+        var submitted = false;
+
+        // Tùy chỉnh danh sách quà hiển thị trên vòng quay
         const rewards = [
             "Voucher 50K", "Móc Khóa Cute", "Chúc Bạn May Mắn", 
             "Áo Thun FreeSize", "Ly Sứ Cao Cấp", "Voucher 100K"
@@ -85,7 +102,7 @@
         const spinBtn = document.getElementById("spinBtn");
         const popup = document.getElementById("popup");
         const rewardText = document.getElementById("rewardText");
-        const infoForm = document.getElementById("infoForm");
+        const displayForm = document.getElementById("displayForm");
 
         const numSegments = rewards.length;
         const arcSize = (2 * Math.PI) / numSegments;
@@ -119,7 +136,7 @@
             if (isSpinning) return;
             isSpinning = true;
 
-            const spinRounds = 5 + Math.floor(Math.random() * 5);
+            const spinRounds = 6 + Math.floor(Math.random() * 4);
             const randomDegrees = Math.random() * 360;
             const totalTargetRotation = spinRounds * 360 + randomDegrees;
 
@@ -144,35 +161,22 @@
             }, 4000);
         });
 
-        // XỬ LÝ GỬI DỮ LIỆU ĐÃ TÍCH HỢP SẴN LINK FORM CỦA BẠN
-        infoForm.addEventListener("submit", (e) => {
+        // Xử lý chuyển tiếp dữ liệu
+        displayForm.addEventListener("submit", (e) => {
             e.preventDefault();
             
-            // Link nhận phản hồi Google Form của bạn
-            const googleFormURL = "https://docs.google.com/forms/d/e/1FAIpQLSe8XVbzQ8iYJAO_lY0nWel4T9N4kZux3D78F6Kguevoe7p6GA/viewform";
+            // Đồng bộ dữ liệu nhập vào Form ẩn của Google
+            document.getElementById("g_reward").value = rewardText.innerText;
+            document.getElementById("g_name").value = document.getElementById("fullname").value;
+            document.getElementById("g_phone").value = document.getElementById("phone").value;
+            document.getElementById("g_email").value = document.getElementById("email").value;
 
-            // Đóng gói dữ liệu gửi đi khớp với các mã entry đã kiểm tra
-            const formData = new FormData();
-            formData.append("entry.2005620554", rewardText.innerText); 
-            formData.append("entry.1045781291", document.getElementById("fullname").value); 
-            formData.append("entry.1065046570", document.getElementById("phone").value); 
-            formData.append("entry.1166974658", document.getElementById("email").value); 
-
-            fetch(googleFormURL, {
-                method: "POST",
-                mode: "no-cors",
-                body: formData
-            })
-            .then(() => {
-                alert(`🎉 Đăng ký thành công!\nCảm ơn ${document.getElementById("fullname").value}. Chúng tôi đã ghi nhận thông tin và phần quà của bạn!`);
-                infoForm.reset();
-                popup.classList.remove("show");
-            })
-            .catch((error) => {
-                console.error("Lỗi gửi dữ liệu:", error);
-                alert("Có lỗi xảy ra khi lưu thông tin. Vui lòng thử lại!");
-            });
+            // Bật cờ thông báo đã submit để kích hoạt hàm handleSuccess sau đó
+            submitted = true;
+            
+            // Kích hoạt nộp lệnh submit chính thống của trình duyệt qua Iframe
+            document.getElementById("realGoogleForm").submit();
         });
-    </script>
-</body>
-</html>
+
+        // Chạy tự động sau khi Iframe nhận được tín hiệu phản hồi từ máy chủ Google
+        function handleSuccess() {
