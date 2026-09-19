@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vòng Quay May Mắn Nhận Quà</title>
+    <!-- Thư viện hiệu ứng pháo hoa -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        h1 { color: #d63031; margin-bottom: 20px; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); text-align: center; }
+        
+        .wheel-container { position: relative; width: 360px; height: 360px; margin-bottom: 20px; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; border: 8px solid #fdcb6e; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: transform 4s cubic-bezier(0.1, 0.8, 0.2, 1); background: #fff; }
+        
+        .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 30px solid #d63031; z-index: 10; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+        
+        .spin-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70px; height: 70px; background: #d63031; border-radius: 50%; border: 4px solid #fff; color: #fff; font-weight: bold; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 5; user-select: none; }
+        .spin-btn:active { transform: translate(-50%, -50%) scale(0.95); }
+
+        .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .popup-box { background: #fff; padding: 30px; border-radius: 15px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.3); transform: scale(0.8); transition: transform 0.3s ease; }
+        .popup-overlay.show { opacity: 1; pointer-events: auto; }
+        .popup-overlay.show .popup-box { transform: scale(1); }
+        
+        .popup-box h2 { color: #2d3436; margin-bottom: 10px; }
+        .reward-announcement { font-size: 20px; color: #6c5ce7; font-weight: bold; margin-bottom: 20px; background: #f1f2f6; padding: 10px; border-radius: 8px; }
+        
+        .form-group { margin-bottom: 15px; text-align: left; }
+        .form-group label { display: block; font-size: 14px; margin-bottom: 5px; color: #636e72; font-weight: 600; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #dfe6e9; border-radius: 5px; font-size: 15px; outline: none; }
+        .form-group input:focus { border-color: #6c5ce7; }
+        
+        .submit-btn { width: 100%; padding: 12px; background: #2ecc71; border: none; border-radius: 5px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 6px rgba(46, 204, 113, 0.2); }
+        .submit-btn:hover { background: #27ae60; }
+    </style>
+</head>
+<body>
+
+    <h1>🎡 VÒNG QUAY MAY MẮN NHẬN QUÀ 🎁</h1>
+
+    <div class="wheel-container">
+        <div class="pointer"></div>
+        <canvas id="wheel" width="360" height="360"></canvas>
+        <div class="spin-btn" id="spinBtn">QUAY</div>
+    </div>
+
+    <!-- POPUP FORM THU THẬP THÔNG TIN -->
+    <div class="popup-overlay" id="popup">
+        <div class="popup-box">
+            <h2>🎉 Chúc Mừng Bạn!</h2>
+            <p style="margin-bottom: 5px;">Bạn đã quay trúng phần quà:</p>
+            <div class="reward-announcement" id="rewardText">Đang tải...</div>
+            
+            <form id="infoForm">
+                <div class="form-group">
+                    <label>Họ và Tên:</label>
+                    <input type="text" id="fullname" placeholder="Nhập họ tên của bạn" required>
+                </div>
+                <div class="form-group">
+                    <label>Số Điện Thoại:</label>
+                    <input type="tel" id="phone" placeholder="Nhập số điện thoại liên hệ" required>
+                </div>
+                <div class="form-group">
+                    <label>Địa chỉ Email:</label>
+                    <input type="email" id="email" placeholder="Ví dụ: hoten@gmail.com" required>
+                </div>
+                <button type="submit" class="submit-btn">Xác Nhận Nhận Quà</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Danh sách quà tặng mặc định (Bạn có thể sửa chữ trong các dấu ngoặc kép này)
+        const rewards = [
+            "Voucher 50K", "Móc Khóa Cute", "Chúc Bạn May Mắn", 
+            "Áo Thun FreeSize", "Ly Sứ Cao Cấp", "Voucher 100K"
+        ];
+        
+        const colors = ["#ff7675", "#74b9ff", "#a29bfe", "#ffeaa7", "#55efc4", "#fab1a0"];
+
+        const canvas = document.getElementById("wheel");
+        const ctx = canvas.getContext("2d");
+        const spinBtn = document.getElementById("spinBtn");
+        const popup = document.getElementById("popup");
+        const rewardText = document.getElementById("rewardText");
+        const infoForm = document.getElementById("infoForm");
+
+        const numSegments = rewards.length;
+        const arcSize = (2 * Math.PI) / numSegments;
+        let currentAngle = 0;
+        let isSpinning = false;
+
+        function drawWheel() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < numSegments; i++) {
+                const angle = currentAngle + i * arcSize;
+                ctx.fillStyle = colors[i % colors.length];
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, canvas.height / 2);
+                ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, angle, angle + arcSize);
+                ctx.lineTo(canvas.width / 2, canvas.height / 2);
+                ctx.fill();
+
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(angle + arcSize / 2);
+                ctx.textAlign = "right";
+                ctx.fillStyle = "#2d3436";
+                ctx.font = "bold 14px Arial";
+                ctx.fillText(rewards[i], canvas.width / 2 - 20, 5);
+                ctx.restore();
+            }
+        }
+        drawWheel();
+
+        spinBtn.addEventListener("click", () => {
+            if (isSpinning) return;
+            isSpinning = true;
+
+            const spinRounds = 5 + Math.floor(Math.random() * 5);
+            const randomDegrees = Math.random() * 360;
+            const totalTargetRotation = spinRounds * 360 + randomDegrees;
+
+            const wheelStyle = document.getElementById("wheel").style;
+            wheelStyle.transform = `rotate(${totalTargetRotation}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                
+                const actualDegrees = totalTargetRotation % 360;
+                const normalizedAngle = (360 - actualDegrees + 270) % 360;
+                const winningIndex = Math.floor((normalizedAngle / 360) * numSegments) % numSegments;
+                const finalReward = rewards[winningIndex];
+
+                rewardText.innerText = finalReward;
+                popup.classList.add("show");
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                
+                wheelStyle.transition = "none";
+                wheelStyle.transform = `rotate(${actualDegrees}deg)`;
+                setTimeout(() => { wheelStyle.transition = "transform 4s cubic-bezier(0.1, 0.8, 0.2, 1)"; }, 50);
+            }, 4000);
+        });
+
+        // XỬ LÝ GỬI DỮ LIỆU ĐÃ TÍCH HỢP SẴN LINK FORM CỦA BẠN
+        infoForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            
+            // Link nhận phản hồi Google Form của bạn
+            const googleFormURL = "https://docs.google.com/forms/d/e/1FAIpQLSe8XVbzQ8iYJAO_lY0nWel4T9N4kZux3D78F6Kguevoe7p6GA/viewform";
+
+            // Đóng gói dữ liệu gửi đi khớp với các mã entry đã kiểm tra
+            const formData = new FormData();
+            formData.append("entry.2005620554", rewardText.innerText); 
+            formData.append("entry.1045781291", document.getElementById("fullname").value); 
+            formData.append("entry.1065046570", document.getElementById("phone").value); 
+            formData.append("entry.1166974658", document.getElementById("email").value); 
+
+            fetch(googleFormURL, {
+                method: "POST",
+                mode: "no-cors",
+                body: formData
+            })
+            .then(() => {
+                alert(`🎉 Đăng ký thành công!\nCảm ơn ${document.getElementById("fullname").value}. Chúng tôi đã ghi nhận thông tin và phần quà của bạn!`);
+                infoForm.reset();
+                popup.classList.remove("show");
+            })
+            .catch((error) => {
+                console.error("Lỗi gửi dữ liệu:", error);
+                alert("Có lỗi xảy ra khi lưu thông tin. Vui lòng thử lại!");
+            });
+        });
+    </script>
+</body>
+</html>
